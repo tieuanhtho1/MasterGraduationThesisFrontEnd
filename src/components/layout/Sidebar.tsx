@@ -8,7 +8,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: 'Dashboard', path: '/dashboard', icon: '📊' },
+  { name: 'Collection', path: '/collection', icon: '📊' },
   { name: 'Profile', path: '/profile', icon: '👤' },
   { name: 'Settings', path: '/settings', icon: '⚙️' },
   { name: 'Analytics', path: '/analytics', icon: '📈' },
@@ -64,7 +64,7 @@ const Sidebar: React.FC = () => {
       {!isCollapsed && (
         <div className="p-4 border-t border-gray-800">
           <p className="text-xs text-gray-400 text-center">
-            © 2025 My App
+            © 2025 Flash Cards
           </p>
         </div>
       )}

@@ -1,10 +1,13 @@
 import { useAuthStore } from '../store/authStore';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { flashCardService } from '../services/flashCardService';
 import type { FlashCardCollection, CreateFlashCardCollectionDto } from '../types';
+import { ANIMATION_DURATION } from '../constants/animations';
 
-const DashboardPage = () => {
+const CollectionPage = () => {
   const user = useAuthStore((state) => state.user);
+  const navigate = useNavigate();
   const [collections, setCollections] = useState<FlashCardCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -13,6 +16,7 @@ const DashboardPage = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<FlashCardCollection | null>(null);
+  const [expandedCollections, setExpandedCollections] = useState<Set<number>>(new Set());
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -40,7 +44,7 @@ const DashboardPage = () => {
     };
 
     loadCollections();
-  }, [user?.id]);
+  }, [user]);
 
   const fetchCollections = async () => {
     if (!user?.id) return;
@@ -132,6 +136,18 @@ const DashboardPage = () => {
     setShowDeleteModal(true);
   };
 
+  const toggleExpanded = (collectionId: number) => {
+    setExpandedCollections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(collectionId)) {
+        newSet.delete(collectionId);
+      } else {
+        newSet.add(collectionId);
+      }
+      return newSet;
+    });
+  };
+
   // Get root collections (no parent)
   const rootCollections = collections.filter(c => c.parentId === null);
 
@@ -144,21 +160,30 @@ const DashboardPage = () => {
   const renderCollection = (collection: FlashCardCollection, level: number = 0) => {
     const children = getChildren(collection.id);
     const hasChildren = children.length > 0;
+    const isExpanded = expandedCollections.has(collection.id);
 
     return (
-      <div key={collection.id} className="mb-2">
-        <div
-          className={`bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow ${
-            level > 0 ? 'ml-8' : ''
-          }`}
-        >
+      <div key={collection.id} className="mb-2" style={{ marginLeft: level > 0 ? `${level * 2}rem` : '0' }}>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 flex-1">
               <div className="flex-shrink-0">
                 {hasChildren ? (
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                  </svg>
+                  <button
+                    onClick={() => toggleExpanded(collection.id)}
+                    className="focus:outline-none"
+                    title={isExpanded ? "Collapse" : "Expand"}
+                  >
+                    <svg
+                      className={`w-5 h-5 text-indigo-600 transition-transform ${isExpanded ? 'transform rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                 ) : (
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -175,6 +200,15 @@ const DashboardPage = () => {
               </div>
             </div>
             <div className="flex space-x-2">
+              {!hasChildren && (
+                <button
+                  onClick={() => navigate(`/flashcards/${collection.id}`)}
+                  className="px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
+                  title="Manage flashcards"
+                >
+                  Flashcards
+                </button>
+              )}
               <button
                 onClick={() => openCreateModal(collection.id)}
                 className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
@@ -198,8 +232,17 @@ const DashboardPage = () => {
           </div>
         </div>
         {hasChildren && (
-          <div className="mt-2">
-            {children.map(child => renderCollection(child, level + 1))}
+          <div
+            className="overflow-hidden transition-all"
+            style={{
+              maxHeight: isExpanded ? '5000px' : '0',
+              opacity: isExpanded ? 1 : 0,
+              transitionDuration: `${ANIMATION_DURATION.NORMAL}ms`,
+            }}
+          >
+            <div className="mt-2">
+              {children.map(child => renderCollection(child, level + 1))}
+            </div>
           </div>
         )}
       </div>
@@ -391,4 +434,4 @@ const DashboardPage = () => {
   );
 };
 
-export default DashboardPage;
+export default CollectionPage;

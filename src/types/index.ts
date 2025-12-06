@@ -51,3 +51,29 @@ export interface UpdateFlashCardCollectionDto {
   description?: string;
   parentId?: number;
 }
+
+export interface FlashCard {
+  id: number;
+  term: string;
+  definition: string;
+  score: number;
+  flashCardCollectionId: number;
+}
+
+export interface FlashCardResponse {
+  flashCards: FlashCard[];
+  pageNumber: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface BulkUpdateFlashCardsDto {
+  flashCardCollectionId: number;
+  flashCards: Array<{
+    id: number;
+    term: string;
+    definition: string;
+    score: number;
+  }>;
+}

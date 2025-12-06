@@ -1,5 +1,11 @@
 import { apiClient } from './api';
-import type { FlashCardCollection, CreateFlashCardCollectionDto, UpdateFlashCardCollectionDto } from '../types';
+import type { 
+  FlashCardCollection, 
+  CreateFlashCardCollectionDto, 
+  UpdateFlashCardCollectionDto,
+  FlashCardResponse,
+  BulkUpdateFlashCardsDto
+} from '../types';
 
 export const flashCardService = {
   // Get all collections for a user
@@ -29,5 +35,30 @@ export const flashCardService = {
   getCollectionById: async (id: number): Promise<FlashCardCollection> => {
     const response = await apiClient.get(`/FlashCardCollection/${id}`);
     return response.data;
+  },
+
+  // Get flashcards for a collection with pagination
+  getFlashCardsByCollection: async (
+    collectionId: number, 
+    pageNumber: number = 1, 
+    pageSize: number = 10,
+    searchText?: string
+  ): Promise<FlashCardResponse> => {
+    const response = await apiClient.get(`/FlashCard/collection/${collectionId}`, {
+      params: { pageNumber, pageSize, searchText }
+    });
+    return response.data;
+  },
+
+  // Bulk update/create flashcards
+  bulkUpdateFlashCards: async (data: BulkUpdateFlashCardsDto): Promise<void> => {
+    await apiClient.post('/FlashCard/Bulk', data);
+  },
+
+  // Bulk delete flashcards
+  bulkDeleteFlashCards: async (flashCardIds: number[]): Promise<void> => {
+    await apiClient.delete('/FlashCard/Bulk', {
+      data: { flashCardIds }
+    });
   },
 };
