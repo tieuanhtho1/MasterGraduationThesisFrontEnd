@@ -24,6 +24,7 @@ const FlashCardEditPage = () => {
   const [searchText, setSearchText] = useState('');
   const [selectedCards, setSelectedCards] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [tempPageInput, setTempPageInput] = useState<string>('');
 
   const fetchFlashCards = async (search?: string) => {
     if (!collectionId) return;
@@ -264,6 +265,36 @@ const FlashCardEditPage = () => {
     }
   };
 
+  const handleFirstPage = () => {
+    setPageNumber(1);
+  };
+
+  const handleLastPage = () => {
+    setPageNumber(totalPages);
+  };
+
+  const handlePageInputChange = (value: string) => {
+    setTempPageInput(value);
+  };
+
+  const handlePageInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
+  const handlePageInputKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const page = parseInt(tempPageInput) || pageNumber;
+      if (page >= 1 && page <= totalPages) {
+        setPageNumber(page);
+        setTempPageInput('');
+      }
+    }
+  };
+
+  const handlePageInputBlur = () => {
+    setTempPageInput('');
+  };
+
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
     setPageNumber(1); // Reset to first page when changing page size
@@ -372,7 +403,7 @@ const FlashCardEditPage = () => {
               <option value={30}>30</option>
               <option value={40}>40</option>
               <option value={50}>50</option>
-              <option value={1000}>Show All</option>
+              <option value={-1}>Show All</option>
             </select>
           </div>
           {flashCards.length > 0 && flashCards.some(c => !c.isNew) && (
@@ -535,62 +566,126 @@ const FlashCardEditPage = () => {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow">
-              <div className="flex-1 flex justify-between sm:hidden">
-                <button
-                  onClick={handlePreviousPage}
-                  disabled={pageNumber === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={handleNextPage}
-                  disabled={pageNumber === totalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
+          <div className="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow">
+              <div className="flex-1 flex flex-col gap-3 sm:hidden">
+                <div className="flex justify-between">
+                  <button
+                    onClick={handleFirstPage}
+                    disabled={pageNumber === 1}
+                    className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    First
+                  </button>
+                  <button
+                    onClick={handlePreviousPage}
+                    disabled={pageNumber === 1}
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={handleNextPage}
+                    disabled={pageNumber === totalPages}
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                  <button
+                    onClick={handleLastPage}
+                    disabled={pageNumber === totalPages}
+                    className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Last
+                  </button>
+                </div>
+                <div className="flex items-center justify-center gap-1">
+                  <span className="text-sm text-gray-700">Page</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={tempPageInput || pageNumber}
+                    onChange={(e) => handlePageInputChange(e.target.value)}
+                    onFocus={handlePageInputFocus}
+                    onKeyPress={handlePageInputKeyPress}
+                    onBlur={handlePageInputBlur}
+                    className="w-14 px-2 py-1 text-sm text-center border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-700">of {totalPages}</span>
+                </div>
               </div>
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-gray-700">
                     Showing <span className="font-medium">{(pageNumber - 1) * pageSize + 1}</span> to{' '}
+                    to{" "}
                     <span className="font-medium">
-                      {Math.min(pageNumber * pageSize, totalCount)}
-                    </span>{' '}
+                      {pageSize === -1 ? `${totalCount} ` : `${Math.min(pageNumber * pageSize, totalCount)} `}
+                    </span>
                     of <span className="font-medium">{totalCount}</span> flashcards
                   </p>
                 </div>
-                <div>
+                <div className="flex items-center gap-3">
                   <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    <button
+                      onClick={handleFirstPage}
+                      disabled={pageNumber === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="First page"
+                    >
+                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414zm-6 0a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L5.414 10l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
                     <button
                       onClick={handlePreviousPage}
                       disabled={pageNumber === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Previous page"
                     >
                       <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     </button>
-                    <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                      Page {pageNumber} of {totalPages}
-                    </span>
+                    <div className="relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                      <span className="mr-1">Page</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={totalPages}
+                        value={tempPageInput || pageNumber}
+                        onChange={(e) => handlePageInputChange(e.target.value)}
+                        onFocus={handlePageInputFocus}
+                        onKeyPress={handlePageInputKeyPress}
+                        onBlur={handlePageInputBlur}
+                        className="w-12 px-1 py-0 text-center border-0 border-b border-gray-400 focus:outline-none focus:border-indigo-500 bg-transparent"
+                      />
+                      <span className="ml-1">of {totalPages}</span>
+                    </div>
                     <button
                       onClick={handleNextPage}
                       disabled={pageNumber === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Next page"
                     >
                       <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={handleLastPage}
+                      disabled={pageNumber === totalPages}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Last page"
+                    >
+                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0zm-6 0a1 1 0 010-1.414L8.586 10 4.293 5.707a1 1 0 011.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
                       </svg>
                     </button>
                   </nav>
                 </div>
               </div>
             </div>
-          )}
         </>
       )}
     </div>

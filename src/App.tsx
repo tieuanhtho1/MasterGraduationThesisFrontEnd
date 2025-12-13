@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CollectionPage from './pages/CollectionPage';
 import FlashCardEditPage from './pages/FlashCardEditPage';
+import FlashCardLearnSession from './pages/FlashCardLearnSession';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
@@ -39,6 +40,7 @@ function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<CollectionPage />} />
           <Route path="flashcards/:collectionId" element={<FlashCardEditPage />} />
+          <Route path="learn/:collectionId" element={<FlashCardLearnSession />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />

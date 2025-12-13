@@ -17,6 +17,7 @@ const CollectionPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<FlashCardCollection | null>(null);
   const [expandedCollections, setExpandedCollections] = useState<Set<number>>(new Set());
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -148,6 +149,10 @@ const CollectionPage = () => {
     });
   };
 
+  const toggleMenu = (collectionId: number) => {
+    setOpenMenuId(prev => prev === collectionId ? null : collectionId);
+  };
+
   // Get root collections (no parent)
   const rootCollections = collections.filter(c => c.parentId === null);
 
@@ -203,39 +208,70 @@ const CollectionPage = () => {
               {!hasChildren && (
                 <button
                   onClick={() => navigate(`/flashcards/${collection.id}`)}
-                  className="px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
+                  className="px-4 py-2 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
                   title="Manage flashcards"
                 >
-                  Flashcards
+                  ✏️ Edit
                 </button>
               )}
               <button
-                onClick={() => openCreateModal(collection.id)}
-                className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-                title="Add subfolder"
+                onClick={() => navigate(`/learn/${collection.id}`)}
+                className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
+                title="Start learning"
               >
-                + Sub
+                📚 Learn
               </button>
-              <button
-                onClick={() => openEditModal(collection)}
-                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => openDeleteModal(collection)}
-                className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-              >
-                Delete
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => toggleMenu(collection.id)}
+                  className="px-3 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  title="More options"
+                >
+                  ⋮
+                </button>
+                {openMenuId === collection.id && (
+                  <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                    <button
+                      type='button'
+                      onClick={() => {
+                        openCreateModal(collection.id);
+                        setOpenMenuId(null);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
+                    >
+                      + Add Subfolder
+                    </button>
+                    <button
+                      type='button'
+                      onClick={() => {
+                        openEditModal(collection);
+                        setOpenMenuId(null);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      type='button'
+                      onClick={() => {
+                        openDeleteModal(collection);
+                        setOpenMenuId(null);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-b-lg"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
         {hasChildren && (
           <div
-            className="overflow-hidden transition-all"
+            className="transition-[opacity,transform] overflow-auto"
             style={{
-              maxHeight: isExpanded ? '5000px' : '0',
+              maxHeight: isExpanded ? '5000px' : '0px',
               opacity: isExpanded ? 1 : 0,
               transitionDuration: `${ANIMATION_DURATION.NORMAL}ms`,
             }}
