@@ -4,7 +4,9 @@ import type {
   CreateFlashCardCollectionDto, 
   UpdateFlashCardCollectionDto,
   FlashCardResponse,
-  BulkUpdateFlashCardsDto
+  BulkUpdateFlashCardsDto,
+  LearnSessionResponse,
+  UpdateScoresDto
 } from '../types';
 
 export const flashCardService = {
@@ -60,5 +62,18 @@ export const flashCardService = {
     await apiClient.delete('/FlashCard/Bulk', {
       data: { flashCardIds }
     });
+  },
+
+  // Get learn session flashcards
+  getLearnSession: async (collectionId: number, count: number): Promise<LearnSessionResponse> => {
+    const response = await apiClient.get('/LearnSession', {
+      params: { collectionId, count }
+    });
+    return response.data;
+  },
+
+  // Update flashcard scores
+  updateScores: async (data: UpdateScoresDto): Promise<void> => {
+    await apiClient.put('/LearnSession/scores', data);
   },
 };

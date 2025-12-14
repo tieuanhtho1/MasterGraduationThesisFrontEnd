@@ -77,3 +77,18 @@ export interface BulkUpdateFlashCardsDto {
     score: number;
   }>;
 }
+
+export interface LearnSessionResponse {
+  collectionId: number;
+  count: number;
+  flashCards: FlashCard[];
+}
+
+export interface ScoreUpdate {
+  flashCardId: number;
+  scoreModification: number;
+}
+
+export interface UpdateScoresDto {
+  scoreUpdates: ScoreUpdate[];
+}
