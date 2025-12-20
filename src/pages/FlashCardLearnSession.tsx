@@ -7,6 +7,7 @@ interface FlashCardWithHistory extends FlashCard {
   totalScoreModification: number;
   lastTwoScores: number[];
   isRemembered: boolean;
+  timesLearned: number;
 }
 
 const SCORE_RANGE = 5;
@@ -25,6 +26,8 @@ const FlashCardLearnSession = () => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // Shuffle function
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -54,6 +57,7 @@ const FlashCardLearnSession = () => {
           totalScoreModification: 0,
           lastTwoScores: [],
           isRemembered: false,
+          timesLearned: 0,
         }));
         
         const shuffled = shuffleArray(cardsWithHistory);
@@ -80,6 +84,7 @@ const FlashCardLearnSession = () => {
       // Update score tracking
       updatedCards[cardIndex].totalScoreModification += score;
       updatedCards[cardIndex].lastTwoScores.push(score);
+      updatedCards[cardIndex].timesLearned += 1;
       
       // Keep only last two scores
       if (updatedCards[cardIndex].lastTwoScores.length > 2) {
@@ -95,25 +100,36 @@ const FlashCardLearnSession = () => {
       setAllCards(updatedCards);
     }
     
-    // Move to next card or end loop
-    if (currentIndex < currentCards.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setIsFlipped(false);
-    } else {
-      // End of loop - check if any cards remain
-      const remainingCards = updatedCards.filter(c => !c.isRemembered);
-      
-      if (remainingCards.length === 0) {
-        // All cards remembered - show review
-        setSessionComplete(true);
-      } else {
-        // Shuffle remaining cards and restart loop
-        const shuffled = shuffleArray(remainingCards);
-        setCurrentCards(shuffled);
-        setCurrentIndex(0);
+    // Trigger slide out animation
+    setIsTransitioning(true);
+    
+    // Wait for animation then move to next card
+    setTimeout(() => {
+      // Move to next card or end loop
+      if (currentIndex < currentCards.length - 1) {
+        setCurrentIndex(currentIndex + 1);
         setIsFlipped(false);
+      } else {
+        // End of loop - check if any cards remain
+        const remainingCards = updatedCards.filter(c => !c.isRemembered);
+        
+        if (remainingCards.length === 0) {
+          // All cards remembered - show review
+          setSessionComplete(true);
+        } else {
+          // Shuffle remaining cards and restart loop
+          const shuffled = shuffleArray(remainingCards);
+          setCurrentCards(shuffled);
+          setCurrentIndex(0);
+          setIsFlipped(false);
+        }
       }
-    }
+      
+      // Reset transition state after card change
+      setTimeout(() => {
+        setIsTransitioning(false);
+      }, 50);
+    }, 300);
   };
 
   // Handle card reselection from review
@@ -136,6 +152,19 @@ const FlashCardLearnSession = () => {
     }
   };
 
+  // Handle exit with confirmation
+  const handleExit = () => {
+    setShowExitModal(true);
+  };
+
+  const confirmExit = () => {
+    navigate('/dashboard');
+  };
+
+  const cancelExit = () => {
+    setShowExitModal(false);
+  };
+
   // Submit scores and end session
   const handleEndSession = async () => {
     try {
@@ -147,6 +176,7 @@ const FlashCardLearnSession = () => {
         .map(card => ({
           flashCardId: card.id,
           scoreModification: card.totalScoreModification,
+          TimesLearned: card.timesLearned,
         }));
       
       if (scoreUpdates.length > 0) {
@@ -308,7 +338,7 @@ const FlashCardLearnSession = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Learn Session</h1>
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={handleExit}
           className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
         >
           Exit
@@ -330,52 +360,65 @@ const FlashCardLearnSession = () => {
       </div>
 
       {/* Flashcard */}
-      <div className="mb-6">
+      <div className="mb-6 overflow-hidden">
         <div
-          onClick={() => setIsFlipped(!isFlipped)}
-          className="relative cursor-pointer"
-          style={{ perspective: '1000px', minHeight: '300px' }}
+          onClick={() => !isTransitioning && setIsFlipped(!isFlipped)}
+          className={`relative cursor-pointer ${isTransitioning ? 'pointer-events-none' : ''}`}
+          style={{ perspective: '1000px' }}
         >
           <div
-            className={`relative w-full transition-transform duration-500 transform-gpu ${
-              isFlipped ? 'rotate-y-180' : ''
-            }`}
+            className="relative duration-500"
             style={{
               transformStyle: 'preserve-3d',
+              minHeight: '300px',
+
+              // Flip + slide animation
+              transform: `
+                rotateX(${isFlipped ? 180 : 0}deg)
+                translateX(${isTransitioning ? '100%' : '0'})
+              `,
+              opacity: isTransitioning ? 0 : 1,
+
+              // Explicit transitions only
+              transition: isTransitioning
+                ? 'transform 0.3s ease-in, opacity 0.3s ease-in'
+                : 'transform 0.5s ease',
             }}
           >
-            {/* Front - Term */}
+            {/* Front — Term */}
             <div
-              className={`absolute inset-0 bg-white rounded-lg shadow-lg p-8 flex items-center justify-center ${
-                isFlipped ? 'invisible' : 'visible'
-              }`}
+              className="absolute inset-0 bg-white rounded-lg shadow-lg p-8 flex items-center justify-center"
               style={{
-                backfaceVisibility: 'hidden',
                 minHeight: '300px',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
               }}
             >
               <div className="text-center">
-                <p className="text-sm text-gray-500 mb-4">Term</p>
-                <p className="text-4xl font-bold text-gray-800">{currentCard.term}</p>
-                <p className="text-sm text-gray-400 mt-8">Click to flip</p>
+                <p className="text-4xl font-bold text-gray-800">
+                  {currentCard.term}
+                </p>
               </div>
             </div>
 
-            {/* Back - Definition */}
+            {/* Back — Definition */}
             <div
-              className={`absolute inset-0 bg-blue-50 rounded-lg shadow-lg p-8 flex items-center justify-center ${
-                isFlipped ? 'visible' : 'invisible'
-              }`}
+              className="absolute inset-0 bg-blue-50 rounded-lg shadow-lg p-8 flex items-center justify-center"
               style={{
-                backfaceVisibility: 'hidden',
-                transform: 'rotateY(180deg)',
                 minHeight: '300px',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                transform: 'rotateX(180deg)',
               }}
             >
               <div className="text-center">
-                <p className="text-sm text-gray-500 mb-4">Definition</p>
-                <p className="text-3xl font-semibold text-gray-800">{currentCard.definition}</p>
-                <p className="text-sm text-gray-400 mt-8">Click to flip</p>
+                {/* <p className="text-sm text-gray-500 mb-4">Definition</p> */}
+                <p className="text-3xl font-semibold text-gray-800">
+                  {currentCard.definition}
+                </p>
+                {/* <p className="text-sm text-gray-400 mt-8">
+                  Click to flip
+                </p> */}
               </div>
             </div>
           </div>
@@ -394,6 +437,32 @@ const FlashCardLearnSession = () => {
           Negative scores for cards you don't know well, positive for cards you know well
         </p>
       </div>
+
+      {/* Exit Confirmation Modal */}
+      {showExitModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Exit Session?</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to exit? Your progress will not be saved.
+            </p>
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={cancelExit}
+                className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmExit}
+                className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold"
+              >
+                Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

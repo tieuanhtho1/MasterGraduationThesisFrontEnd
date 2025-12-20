@@ -17,7 +17,6 @@ const CollectionPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<FlashCardCollection | null>(null);
   const [expandedCollections, setExpandedCollections] = useState<Set<number>>(new Set());
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -149,10 +148,6 @@ const CollectionPage = () => {
     });
   };
 
-  const toggleMenu = (collectionId: number) => {
-    setOpenMenuId(prev => prev === collectionId ? null : collectionId);
-  };
-
   // Get root collections (no parent)
   const rootCollections = collections.filter(c => c.parentId === null);
 
@@ -196,7 +191,32 @@ const CollectionPage = () => {
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-800">{collection.title}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-gray-800">{collection.title}</h3>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openCreateModal(collection.id)}
+                      className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                      title="Add Subfolder"
+                    >
+                      + Subfolder
+                    </button>
+                    <button
+                      onClick={() => openEditModal(collection)}
+                      className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                      title="Edit Collection"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => openDeleteModal(collection)}
+                      className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                      title="Delete Collection"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
                 <p className="text-sm text-gray-600">{collection.description}</p>
                 <div className="flex space-x-4 mt-2 text-xs text-gray-500">
                   <span>📇 {collection.flashCardCount} cards</span>
@@ -211,7 +231,7 @@ const CollectionPage = () => {
                   className="px-4 py-2 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
                   title="Manage flashcards"
                 >
-                  ✏️ Edit
+                  ✏️ Edit Cards
                 </button>
               )}
               <button
@@ -221,49 +241,6 @@ const CollectionPage = () => {
               >
                 📚 Learn
               </button>
-              <div className="relative">
-                <button
-                  onClick={() => toggleMenu(collection.id)}
-                  className="px-3 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-                  title="More options"
-                >
-                  ⋮
-                </button>
-                {openMenuId === collection.id && (
-                  <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                    <button
-                      type='button'
-                      onClick={() => {
-                        openCreateModal(collection.id);
-                        setOpenMenuId(null);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
-                    >
-                      + Add Subfolder
-                    </button>
-                    <button
-                      type='button'
-                      onClick={() => {
-                        openEditModal(collection);
-                        setOpenMenuId(null);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      ✏️ Edit
-                    </button>
-                    <button
-                      type='button'
-                      onClick={() => {
-                        openDeleteModal(collection);
-                        setOpenMenuId(null);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-b-lg"
-                    >
-                      🗑️ Delete
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>

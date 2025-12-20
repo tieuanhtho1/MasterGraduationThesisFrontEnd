@@ -87,6 +87,7 @@ export interface LearnSessionResponse {
 export interface ScoreUpdate {
   flashCardId: number;
   scoreModification: number;
+  TimesLearned: number;
 }
 
 export interface UpdateScoresDto {
