@@ -98,7 +98,7 @@ const AnalyticsPage: React.FC = () => {
     );
   }
 
-  const { overview, learningProgress, topCollections, scoreDistribution } = analytics;
+  const { overview, learningProgress, topCollections, averageScoreDistribution } = analytics;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -204,65 +204,65 @@ const AnalyticsPage: React.FC = () => {
 
         {/* Score Distribution */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Score Distribution</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Average Score Distribution</h2>
           <div className="space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-gray-600">0-20% (Needs Work)</span>
-                <span className="text-sm font-semibold text-red-600">{scoreDistribution.score0To20}</span>
+                <span className="text-sm text-gray-600">-5 to -3 (Needs Work)</span>
+                <span className="text-sm font-semibold text-red-600">{averageScoreDistribution.scoreMinus5ToMinus3}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-red-500 h-2 rounded-full"
-                  style={{ width: `${(scoreDistribution.score0To20 / overview.totalFlashCards) * 100}%` }}
+                  style={{ width: `${(averageScoreDistribution.scoreMinus5ToMinus3 / overview.totalFlashCards) * 100}%` }}
                 ></div>
               </div>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-gray-600">21-40%</span>
-                <span className="text-sm font-semibold text-orange-600">{scoreDistribution.score21To40}</span>
+                <span className="text-sm text-gray-600">-3 to -1</span>
+                <span className="text-sm font-semibold text-orange-600">{averageScoreDistribution.scoreMinus3ToMinus1}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-orange-500 h-2 rounded-full"
-                  style={{ width: `${(scoreDistribution.score21To40 / overview.totalFlashCards) * 100}%` }}
+                  style={{ width: `${(averageScoreDistribution.scoreMinus3ToMinus1 / overview.totalFlashCards) * 100}%` }}
                 ></div>
               </div>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-gray-600">41-60% (In Progress)</span>
-                <span className="text-sm font-semibold text-yellow-600">{scoreDistribution.score41To60}</span>
+                <span className="text-sm text-gray-600">-1 to 1 (In Progress)</span>
+                <span className="text-sm font-semibold text-yellow-600">{averageScoreDistribution.scoreMinus1To1}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-yellow-500 h-2 rounded-full"
-                  style={{ width: `${(scoreDistribution.score41To60 / overview.totalFlashCards) * 100}%` }}
+                  style={{ width: `${(averageScoreDistribution.scoreMinus1To1 / overview.totalFlashCards) * 100}%` }}
                 ></div>
               </div>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-gray-600">61-80%</span>
-                <span className="text-sm font-semibold text-blue-600">{scoreDistribution.score61To80}</span>
+                <span className="text-sm text-gray-600">1 to 3</span>
+                <span className="text-sm font-semibold text-blue-600">{averageScoreDistribution.score1To3}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-blue-500 h-2 rounded-full"
-                  style={{ width: `${(scoreDistribution.score61To80 / overview.totalFlashCards) * 100}%` }}
+                  style={{ width: `${(averageScoreDistribution.score1To3 / overview.totalFlashCards) * 100}%` }}
                 ></div>
               </div>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-gray-600">81-100% (Mastered)</span>
-                <span className="text-sm font-semibold text-green-600">{scoreDistribution.score81To100}</span>
+                <span className="text-sm text-gray-600">3 to 5 (Mastered)</span>
+                <span className="text-sm font-semibold text-green-600">{averageScoreDistribution.score3To5}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-green-500 h-2 rounded-full"
-                  style={{ width: `${(scoreDistribution.score81To100 / overview.totalFlashCards) * 100}%` }}
+                  style={{ width: `${(averageScoreDistribution.score3To5 / overview.totalFlashCards) * 100}%` }}
                 ></div>
               </div>
             </div>
@@ -398,65 +398,65 @@ const AnalyticsPage: React.FC = () => {
 
                   {/* Score Distribution */}
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Score Distribution</h3>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Average Score Distribution</h3>
                     <div className="space-y-2">
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-gray-600">0-20% (Needs Work)</span>
-                          <span className="text-sm font-semibold text-red-600">{collectionAnalytics.scoreDistribution.score0To20}</span>
+                          <span className="text-sm text-gray-600">-5 to -3 (Needs Work)</span>
+                          <span className="text-sm font-semibold text-red-600">{collectionAnalytics.averageScoreDistribution.scoreMinus5ToMinus3}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-red-500 h-2 rounded-full"
-                            style={{ width: collectionAnalytics.totalFlashCards > 0 ? `${(collectionAnalytics.scoreDistribution.score0To20 / collectionAnalytics.totalFlashCards) * 100}%` : '0%' }}
+                            style={{ width: collectionAnalytics.totalFlashCards > 0 ? `${(collectionAnalytics.averageScoreDistribution.scoreMinus5ToMinus3 / collectionAnalytics.totalFlashCards) * 100}%` : '0%' }}
                           ></div>
                         </div>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-gray-600">21-40%</span>
-                          <span className="text-sm font-semibold text-orange-600">{collectionAnalytics.scoreDistribution.score21To40}</span>
+                          <span className="text-sm text-gray-600">-3 to -1</span>
+                          <span className="text-sm font-semibold text-orange-600">{collectionAnalytics.averageScoreDistribution.scoreMinus3ToMinus1}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-orange-500 h-2 rounded-full"
-                            style={{ width: collectionAnalytics.totalFlashCards > 0 ? `${(collectionAnalytics.scoreDistribution.score21To40 / collectionAnalytics.totalFlashCards) * 100}%` : '0%' }}
+                            style={{ width: collectionAnalytics.totalFlashCards > 0 ? `${(collectionAnalytics.averageScoreDistribution.scoreMinus3ToMinus1 / collectionAnalytics.totalFlashCards) * 100}%` : '0%' }}
                           ></div>
                         </div>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-gray-600">41-60% (In Progress)</span>
-                          <span className="text-sm font-semibold text-yellow-600">{collectionAnalytics.scoreDistribution.score41To60}</span>
+                          <span className="text-sm text-gray-600">-1 to 1 (In Progress)</span>
+                          <span className="text-sm font-semibold text-yellow-600">{collectionAnalytics.averageScoreDistribution.scoreMinus1To1}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-yellow-500 h-2 rounded-full"
-                            style={{ width: collectionAnalytics.totalFlashCards > 0 ? `${(collectionAnalytics.scoreDistribution.score41To60 / collectionAnalytics.totalFlashCards) * 100}%` : '0%' }}
+                            style={{ width: collectionAnalytics.totalFlashCards > 0 ? `${(collectionAnalytics.averageScoreDistribution.scoreMinus1To1 / collectionAnalytics.totalFlashCards) * 100}%` : '0%' }}
                           ></div>
                         </div>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-gray-600">61-80%</span>
-                          <span className="text-sm font-semibold text-blue-600">{collectionAnalytics.scoreDistribution.score61To80}</span>
+                          <span className="text-sm text-gray-600">1 to 3</span>
+                          <span className="text-sm font-semibold text-blue-600">{collectionAnalytics.averageScoreDistribution.score1To3}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-blue-500 h-2 rounded-full"
-                            style={{ width: collectionAnalytics.totalFlashCards > 0 ? `${(collectionAnalytics.scoreDistribution.score61To80 / collectionAnalytics.totalFlashCards) * 100}%` : '0%' }}
+                            style={{ width: collectionAnalytics.totalFlashCards > 0 ? `${(collectionAnalytics.averageScoreDistribution.score1To3 / collectionAnalytics.totalFlashCards) * 100}%` : '0%' }}
                           ></div>
                         </div>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-gray-600">81-100% (Mastered)</span>
-                          <span className="text-sm font-semibold text-green-600">{collectionAnalytics.scoreDistribution.score81To100}</span>
+                          <span className="text-sm text-gray-600">3 to 5 (Mastered)</span>
+                          <span className="text-sm font-semibold text-green-600">{collectionAnalytics.averageScoreDistribution.score3To5}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-green-500 h-2 rounded-full"
-                            style={{ width: collectionAnalytics.totalFlashCards > 0 ? `${(collectionAnalytics.scoreDistribution.score81To100 / collectionAnalytics.totalFlashCards) * 100}%` : '0%' }}
+                            style={{ width: collectionAnalytics.totalFlashCards > 0 ? `${(collectionAnalytics.averageScoreDistribution.score3To5 / collectionAnalytics.totalFlashCards) * 100}%` : '0%' }}
                           ></div>
                         </div>
                       </div>

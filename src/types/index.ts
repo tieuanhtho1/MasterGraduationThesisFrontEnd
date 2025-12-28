@@ -120,19 +120,19 @@ export interface TopCollection {
   completionRate: number;
 }
 
-export interface ScoreDistribution {
-  score0To20: number;
-  score21To40: number;
-  score41To60: number;
-  score61To80: number;
-  score81To100: number;
+export interface AverageScoreDistribution {
+  scoreMinus5ToMinus3: number;
+  scoreMinus3ToMinus1: number;
+  scoreMinus1To1: number;
+  score1To3: number;
+  score3To5: number;
 }
 
 export interface UserAnalytics {
   overview: OverviewStats;
   learningProgress: LearningProgress;
   topCollections: TopCollection[];
-  scoreDistribution: ScoreDistribution;
+  averageScoreDistribution: AverageScoreDistribution;
 }
 
 export interface FlashCardDetail {
@@ -151,7 +151,7 @@ export interface CollectionAnalytics {
   flashCardsLearned: number;
   averageScore: number;
   completionRate: number;
-  scoreDistribution: ScoreDistribution;
+  averageScoreDistribution: AverageScoreDistribution;
   topPerformingCards: FlashCardDetail[];
   cardsNeedingReview: FlashCardDetail[];
 }
