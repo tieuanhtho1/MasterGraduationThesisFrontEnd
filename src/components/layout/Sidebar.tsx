@@ -8,7 +8,8 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: 'Collection', path: '/collection', icon: '📊' },
+  { name: 'Collection', path: '/dashboard', icon: '📊' },
+  { name: 'MindMap', path: '/mindmap', icon: '🧠' },
   { name: 'Profile', path: '/profile', icon: '👤' },
   { name: 'Settings', path: '/settings', icon: '⚙️' },
   { name: 'Analytics', path: '/analytics', icon: '📈' },

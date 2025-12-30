@@ -155,3 +155,75 @@ export interface CollectionAnalytics {
   topPerformingCards: FlashCardDetail[];
   cardsNeedingReview: FlashCardDetail[];
 }
+
+// MindMap Types
+export interface MindMap {
+  id: number;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: number;
+}
+
+export interface MindMapNode {
+  id: number;
+  mindMapId: number;
+  flashCardId: number;
+  parentNodeId: number | null;
+  positionX: number;
+  positionY: number;
+  color: string;
+  hideChildren: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MindMapNodeWithFlashCard extends MindMapNode {
+  flashCard: {
+    id: number;
+    term: string;
+    definition: string;
+    score: number;
+    learnCount: number;
+    flashCardCollectionId: number;
+    collectionName: string;
+  };
+}
+
+export interface FullMindMapResponse {
+  id: number;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: number;
+  nodes: MindMapNodeWithFlashCard[];
+}
+
+export interface CreateMindMapDto {
+  name: string;
+  description?: string;
+}
+
+export interface UpdateMindMapDto {
+  name?: string;
+  description?: string;
+}
+
+export interface CreateMindMapNodeDto {
+  flashCardId: number;
+  parentNodeId?: number | null;
+  positionX: number;
+  positionY: number;
+  color?: string;
+  hideChildren?: boolean;
+}
+
+export interface UpdateMindMapNodeDto {
+  positionX?: number;
+  positionY?: number;
+  color?: string;
+  hideChildren?: boolean;
+  parentNodeId?: number | null;
+}
