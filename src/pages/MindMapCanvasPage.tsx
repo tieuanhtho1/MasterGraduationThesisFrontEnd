@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { mindMapService } from '../services/mindMapService';
 import { flashCardService } from '../services/flashCardService';
 import { useAuthStore } from '../store/authStore';
+import { ConfirmModal, AlertModal } from '../components/common/Modal';
 import type { FullMindMapResponse, MindMapNodeWithFlashCard, FlashCard, FlashCardCollection } from '../types';
 
 interface Position {
@@ -52,6 +53,15 @@ const MindMapCanvasPage: React.FC = () => {
   const [selectedCollection, setSelectedCollection] = useState<number | null>(null);
   const [flashCards, setFlashCards] = useState<FlashCard[]>([]);
   const [parentNodeForNew, setParentNodeForNew] = useState<number | null>(null);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: MindMapNodeWithFlashCard } | null>(null);
+  const [showNodeSelector, setShowNodeSelector] = useState(false);
+  const [nodeForAddChild, setNodeForAddChild] = useState<MindMapNodeWithFlashCard | null>(null);
+
+  // Modal states
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' | 'info' }>({ isOpen: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
     const init = async () => {
@@ -200,16 +210,79 @@ const MindMapCanvasPage: React.FC = () => {
   };
 
   const handleDeleteNode = async (nodeId: number) => {
-    if (!window.confirm('Delete this node? Child nodes will become root nodes.')) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Node',
+      message: 'Delete this node? Child nodes will become root nodes.',
+      onConfirm: async () => {
+        try {
+          await mindMapService.deleteNode(nodeId);
+          await loadMindMap();
+          setSelectedNode(null);
+          setContextMenu(null);
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to delete node';
+          setError(errorMessage);
+        }
+      },
+    });
+  };
+
+  const handleRightClick = (e: React.MouseEvent, node: MindMapNodeWithFlashCard) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, node });
+  };
+
+  const handleAddChildFromCanvas = async (childNodeId: number) => {
+    if (!nodeForAddChild) return;
 
     try {
-      await mindMapService.deleteNode(nodeId);
+      await mindMapService.updateNode(childNodeId, {
+        parentNodeId: nodeForAddChild.id,
+      });
       await loadMindMap();
-      setSelectedNode(null);
+      setShowNodeSelector(false);
+      setNodeForAddChild(null);
+      setAlertModal({
+        isOpen: true,
+        title: 'Success',
+        message: 'Child node added successfully!',
+        type: 'success',
+      });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete node';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add child node';
       setError(errorMessage);
     }
+  };
+
+  const getAvailableNodesForChild = () => {
+    if (!nodeForAddChild) return [];
+    
+    // Get all descendant IDs to prevent circular dependencies
+    const getDescendants = (nodeId: number): Set<number> => {
+      const descendants = new Set<number>();
+      const addDescendants = (id: number) => {
+        nodes.forEach((node) => {
+          if (node.parentNodeId === id) {
+            descendants.add(node.id);
+            addDescendants(node.id);
+          }
+        });
+      };
+      addDescendants(nodeId);
+      return descendants;
+    };
+
+    const descendants = getDescendants(nodeForAddChild.id);
+    
+    // Filter out the node itself, its descendants, and nodes that already have this as parent
+    return nodes.filter(
+      (node) => 
+        node.id !== nodeForAddChild.id && 
+        !descendants.has(node.id) &&
+        node.parentNodeId !== nodeForAddChild.id
+    );
   };
 
   const handleSaveChanges = async () => {
@@ -223,7 +296,12 @@ const MindMapCanvasPage: React.FC = () => {
       }));
       await mindMapService.batchUpdateNodes(updates);
       setHasChanges(false);
-      alert('Changes saved successfully!');
+      setAlertModal({
+        isOpen: true,
+        title: 'Success',
+        message: 'Changes saved successfully!',
+        type: 'success',
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save changes';
       setError(errorMessage);
@@ -253,24 +331,57 @@ const MindMapCanvasPage: React.FC = () => {
 
   const renderConnections = () => {
     const visibleNodes = getVisibleNodes();
-    return visibleNodes.map((node) => {
-      if (!node.parentNodeId) return null;
-      const parent = nodes.find((n) => n.id === node.parentNodeId);
-      if (!parent || parent.hideChildren) return null;
+    return (
+      <>
+        <defs>
+          <marker
+            id="arrowhead"
+            markerWidth="10"
+            markerHeight="10"
+            refX="9"
+            refY="3"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <polygon points="0 0, 10 3, 0 6" fill="currentColor" />
+          </marker>
+        </defs>
+        {visibleNodes.map((node) => {
+          if (!node.parentNodeId) return null;
+          const parent = nodes.find((n) => n.id === node.parentNodeId);
+          if (!parent || parent.hideChildren) return null;
 
-      return (
-        <line
-          key={`line-${node.id}`}
-          x1={parent.positionX}
-          y1={parent.positionY}
-          x2={node.positionX}
-          y2={node.positionY}
-          stroke={node.color}
-          strokeWidth={2 / zoom}
-          opacity={0.6}
-        />
-      );
-    });
+          // Calculate direction for arrow placement
+          const dx = node.positionX - parent.positionX;
+          const dy = node.positionY - parent.positionY;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          const unitX = dx / length;
+          const unitY = dy / length;
+          
+          // Shorten line to account for node size (approximate 75px from each end)
+          const offset = 1;
+          const startX = parent.positionX + unitX * offset;
+          const startY = parent.positionY + unitY * offset;
+          const endX = node.positionX - unitX * offset;
+          const endY = node.positionY - unitY * offset;
+
+          return (
+            <line
+              key={`line-${node.id}`}
+              x1={startX}
+              y1={startY}
+              x2={endX}
+              y2={endY}
+              stroke={node.color}
+              strokeWidth={2 / zoom}
+              opacity={0.6}
+              markerEnd="url(#arrowhead)"
+              style={{ color: node.color }}
+            />
+          );
+        })}
+      </>
+    );
   };
 
   if (loading) {
@@ -351,6 +462,7 @@ const MindMapCanvasPage: React.FC = () => {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onClick={() => setContextMenu(null)}
       >
         <svg
           ref={svgRef}
@@ -376,6 +488,7 @@ const MindMapCanvasPage: React.FC = () => {
               minWidth: 150,
             }}
             onMouseDown={(e) => handleNodeDragStart(e, node)}
+            onContextMenu={(e) => handleRightClick(e, node)}
           >
             <div
               onClick={() => setSelectedNode(node)}
@@ -447,8 +560,8 @@ const MindMapCanvasPage: React.FC = () => {
             <div className="space-y-2">
               <button
                 onClick={() => {
-                  setParentNodeForNew(selectedNode.id);
-                  setShowFlashCardSelector(true);
+                  setNodeForAddChild(selectedNode);
+                  setShowNodeSelector(true);
                 }}
                 className="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
               >
@@ -521,6 +634,108 @@ const MindMapCanvasPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed bg-white shadow-lg rounded-lg border border-gray-200 py-2 z-50"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              setNodeForAddChild(contextMenu.node);
+              setShowNodeSelector(true);
+              setContextMenu(null);
+            }}
+            className="w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors flex items-center gap-2"
+          >
+            <span>➕</span>
+            <span>Add Child Node</span>
+          </button>
+          <button
+            onClick={() => {
+              handleDeleteNode(contextMenu.node.id);
+            }}
+            className="w-full px-4 py-2 text-left hover:bg-gray-100 text-red-600 transition-colors flex items-center gap-2"
+          >
+            <span>🗑️</span>
+            <span>Delete Node</span>
+          </button>
+        </div>
+      )}
+
+      {/* Node Selector Modal for Adding Child */}
+      {showNodeSelector && nodeForAddChild && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-4">Select Node to Add as Child</h2>
+            <p className="text-gray-600 mb-4">
+              Select a node from the canvas to add as a child of <strong>{nodeForAddChild.flashCard.term}</strong>
+            </p>
+
+            {getAvailableNodesForChild().length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No available nodes to add as children.
+              </div>
+            ) : (
+              <div className="space-y-2 mb-4">
+                {getAvailableNodesForChild().map((node) => (
+                  <div
+                    key={node.id}
+                    onClick={() => handleAddChildFromCanvas(node.id)}
+                    className="border-2 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                    style={{ borderColor: node.color }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: node.color }}
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold">{node.flashCard.term}</div>
+                        <div className="text-sm text-gray-600">{node.flashCard.definition}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Score: {node.flashCard.score} | Collection: {node.flashCard.collectionName}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => {
+                setShowNodeSelector(false);
+                setNodeForAddChild(null);
+              }}
+              className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type="danger"
+      />
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 };
