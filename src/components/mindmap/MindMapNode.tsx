@@ -6,7 +6,6 @@ export interface MindMapNodeData {
   color: string;
   hideChildren: boolean;
   nodeId: number | null;     // original DB id (null for brand-new nodes)
-  parentNodeId: number | null;
   flashCardId: number;
   flashCard: {
     id: number;
@@ -46,6 +45,29 @@ const MindMapNode: FC<MindMapNodeType> = ({ id, data, selected }) => {
       <Handle
         type="target"
         position={Position.Top}
+        id="top"
+        className="!w-3 !h-3 !bg-indigo-400 !border-2 !border-white"
+      />
+      {/* Source handle (top) */}
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top"
+        className="!w-3 !h-3 !bg-indigo-400 !border-2 !border-white"
+      />
+
+      {/* Target handle (left) */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        className="!w-3 !h-3 !bg-indigo-400 !border-2 !border-white"
+      />
+      {/* Source handle (left) */}
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left"
         className="!w-3 !h-3 !bg-indigo-400 !border-2 !border-white"
       />
 
@@ -89,6 +111,29 @@ const MindMapNode: FC<MindMapNodeType> = ({ id, data, selected }) => {
       <Handle
         type="source"
         position={Position.Bottom}
+        id="bottom"
+        className="!w-3 !h-3 !bg-indigo-400 !border-2 !border-white"
+      />
+      {/* Target handle (bottom) */}
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom"
+        className="!w-3 !h-3 !bg-indigo-400 !border-2 !border-white"
+      />
+
+      {/* Source handle (right) */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        className="!w-3 !h-3 !bg-indigo-400 !border-2 !border-white"
+      />
+      {/* Target handle (right) */}
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right"
         className="!w-3 !h-3 !bg-indigo-400 !border-2 !border-white"
       />
     </div>

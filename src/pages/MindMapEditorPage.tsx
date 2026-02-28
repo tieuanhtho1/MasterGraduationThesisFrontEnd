@@ -7,22 +7,22 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
-  addEdge,
   type Node,
   type Edge,
   type Connection,
   type NodeChange,
+  type EdgeChange,
   MarkerType,
   Panel,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { mindMapService } from '../services/mindMapService';
-import type { MindMapDetailResponse, MindMapNodeResponse, FlashCard } from '../types';
+import type { MindMapDetailResponse, MindMapNodeResponse, MindMapEdgeResponse, FlashCard } from '../types';
 import MindMapCustomNode, { type MindMapNodeData } from '../components/mindmap/MindMapNode';
 import NodeDetailPanel from '../components/mindmap/NodeDetailPanel';
 import FlashCardPicker from '../components/mindmap/FlashCardPicker';
-import { ConfirmModal } from '../components/common/Modal';
+
 
 /* ─── helpers ──────────────────────────────────────────── */
 
@@ -41,7 +41,6 @@ const toRFNode = (
     color: n.color || '#ffffff',
     hideChildren: n.hideChildren,
     nodeId: n.id,
-    parentNodeId: n.parentNodeId,
     flashCardId: n.flashCardId,
     flashCard: n.flashCard,
     hasChildren: childrenIds.has(n.id),
@@ -49,36 +48,41 @@ const toRFNode = (
   } satisfies MindMapNodeData,
 });
 
-/** Build edges from nodes array */
-const buildEdges = (nodes: MindMapNodeResponse[]): Edge[] =>
-  nodes
-    .filter((n) => n.parentNodeId !== null)
-    .map((n) => ({
-      id: `e${n.parentNodeId}-${n.id}`,
-      source: String(n.parentNodeId),
-      target: String(n.id),
-      type: 'smoothstep',
-      animated: false,
-      markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-      style: { stroke: '#94a3b8', strokeWidth: 2 },
-    }));
+/** Build React Flow edges from API edge responses */
+const buildEdges = (edges: MindMapEdgeResponse[]): Edge[] =>
+  edges.map((e) => ({
+    id: `e${e.id ?? `${e.sourceNodeId}-${e.targetNodeId}-${e.sourceHandle}-${e.targetHandle}`}`,
+    source: String(e.sourceNodeId),
+    target: String(e.targetNodeId),
+    sourceHandle: e.sourceHandle,
+    targetHandle: e.targetHandle,
+    type: 'smoothstep',
+    animated: false,
+    markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+    style: { stroke: '#94a3b8', strokeWidth: 2 },
+    data: { apiEdgeId: e.id }, // keep reference to API edge id
+  }));
 
-/** Compute all node ids whose ancestor has hideChildren=true */
-const computeHiddenIds = (apiNodes: MindMapNodeResponse[]): Set<number> => {
+/** Compute all node ids whose ancestor has hideChildren=true (using edges for parent→child) */
+const computeHiddenIds = (
+  apiNodes: MindMapNodeResponse[],
+  apiEdges: MindMapEdgeResponse[],
+): Set<number> => {
   const hidden = new Set<number>();
-  const byParent = new Map<number, MindMapNodeResponse[]>();
-  for (const n of apiNodes) {
-    if (n.parentNodeId !== null) {
-      const arr = byParent.get(n.parentNodeId) || [];
-      arr.push(n);
-      byParent.set(n.parentNodeId, arr);
-    }
+  // Build a map: sourceNodeId → [targetNodeIds] (parent → children via edges)
+  const childrenByParent = new Map<number, number[]>();
+  for (const e of apiEdges) {
+    const arr = childrenByParent.get(e.sourceNodeId) || [];
+    arr.push(e.targetNodeId);
+    childrenByParent.set(e.sourceNodeId, arr);
   }
   const traverse = (parentId: number) => {
-    const children = byParent.get(parentId) || [];
-    for (const c of children) {
-      hidden.add(c.id);
-      traverse(c.id);
+    const children = childrenByParent.get(parentId) || [];
+    for (const childId of children) {
+      if (!hidden.has(childId)) {
+        hidden.add(childId);
+        traverse(childId);
+      }
     }
   };
   for (const n of apiNodes) {
@@ -87,10 +91,11 @@ const computeHiddenIds = (apiNodes: MindMapNodeResponse[]): Set<number> => {
   return hidden;
 };
 
-const computeChildrenIds = (apiNodes: MindMapNodeResponse[]): Set<number> => {
+/** Compute set of node ids that have at least one child (are a source in any edge) */
+const computeChildrenIds = (apiEdges: MindMapEdgeResponse[]): Set<number> => {
   const ids = new Set<number>();
-  for (const n of apiNodes) {
-    if (n.parentNodeId !== null) ids.add(n.parentNodeId);
+  for (const e of apiEdges) {
+    ids.add(e.sourceNodeId);
   }
   return ids;
 };
@@ -107,6 +112,7 @@ const MindMapEditorPage = () => {
   // Core data
   const [mindMap, setMindMap] = useState<MindMapDetailResponse | null>(null);
   const [apiNodes, setApiNodes] = useState<MindMapNodeResponse[]>([]);
+  const [apiEdges, setApiEdges] = useState<MindMapEdgeResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -120,9 +126,7 @@ const MindMapEditorPage = () => {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showFlashCardPicker, setShowFlashCardPicker] = useState(false);
   const [addChildForNodeId, setAddChildForNodeId] = useState<string | null>(null); // when adding child to specific node
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [settingParentMode, setSettingParentMode] = useState(false); // when user wants to re-parent a node
-  const [nodeToReparent, setNodeToReparent] = useState<string | null>(null);
+
 
   // Remember collection for adding flash cards
   const defaultCollectionId = mindMap?.flashCardCollectionId;
@@ -130,12 +134,12 @@ const MindMapEditorPage = () => {
   // Temp counter for new node ids (negative so they don't clash with DB ids)
   const tempIdRef = useRef(-1);
 
-  /* ─── Rebuild React Flow from API nodes ────────────── */
-  const rebuildFlow = useCallback((nodes: MindMapNodeResponse[]) => {
-    const hiddenIds = computeHiddenIds(nodes);
-    const childrenIds = computeChildrenIds(nodes);
+  /* ─── Rebuild React Flow from API nodes + edges ────── */
+  const rebuildFlow = useCallback((nodes: MindMapNodeResponse[], edges: MindMapEdgeResponse[]) => {
+    const hiddenIds = computeHiddenIds(nodes, edges);
+    const childrenIds = computeChildrenIds(edges);
     const rfN = nodes.map((n) => toRFNode(n, childrenIds, hiddenIds));
-    const rfE = buildEdges(nodes);
+    const rfE = buildEdges(edges);
     setRfNodes(rfN);
     setRfEdges(rfE);
   }, [setRfNodes, setRfEdges]);
@@ -149,7 +153,8 @@ const MindMapEditorPage = () => {
         const data = await mindMapService.getMindMapDetail(mindMapId);
         setMindMap(data);
         setApiNodes(data.nodes);
-        rebuildFlow(data.nodes);
+        setApiEdges(data.edges ?? []);
+        rebuildFlow(data.nodes, data.edges ?? []);
       } catch {
         setError('Failed to load mind map');
       } finally {
@@ -177,14 +182,8 @@ const MindMapEditorPage = () => {
   /* ─── Handlers ─────────────────────────────────────── */
 
   const handleNodeClick = useCallback((rfId: string) => {
-    if (settingParentMode && nodeToReparent) {
-      // User clicked a node while in "set parent" mode → reparent
-      reparentNode(nodeToReparent, rfId);
-      return;
-    }
     setSelectedNodeId(rfId);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingParentMode, nodeToReparent]);
+  }, []);
 
   const handleToggleChildren = useCallback(
     (rfId: string) => {
@@ -192,8 +191,8 @@ const MindMapEditorPage = () => {
         const updated = prev.map((n) =>
           String(n.id) === rfId ? { ...n, hideChildren: !n.hideChildren } : n,
         );
-        // Rebuild visibility
-        const hiddenIds = computeHiddenIds(updated);
+        // Rebuild visibility using current apiEdges
+        const hiddenIds = computeHiddenIds(updated, apiEdges);
 
         setRfNodes((rfN) =>
           rfN.map((rn) => {
@@ -225,7 +224,7 @@ const MindMapEditorPage = () => {
         return updated;
       });
     },
-    [setRfNodes, setRfEdges, handleNodeClick],
+    [setRfNodes, setRfEdges, handleNodeClick, apiEdges],
   );
 
   /** When user drags nodes, keep our apiNodes in sync */
@@ -245,18 +244,62 @@ const MindMapEditorPage = () => {
 
   const onConnect = useCallback(
     (conn: Connection) => {
-      setRfEdges((eds) => addEdge({ ...conn, type: 'smoothstep', markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 }, style: { stroke: '#94a3b8', strokeWidth: 2 } } as Edge, eds));
-      // Also update parent reference in apiNodes
-      setApiNodes((prev) =>
-        prev.map((n) =>
-          String(n.id) === conn.target
-            ? { ...n, parentNodeId: Number(conn.source) }
-            : n,
-        ),
-      );
+      // Use a unique edge ID so reverse-direction edges (A→B vs B→A) are not deduplicated
+      const tempEdgeId = tempIdRef.current--;
+      const edgeId = `e${tempEdgeId}`;
+
+      setRfEdges((eds) => [
+        ...eds,
+        {
+          id: edgeId,
+          source: conn.source,
+          target: conn.target,
+          sourceHandle: conn.sourceHandle,
+          targetHandle: conn.targetHandle,
+          type: 'smoothstep',
+          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+          style: { stroke: '#94a3b8', strokeWidth: 2 },
+          data: { apiEdgeId: tempEdgeId },
+        },
+      ]);
+
+      // Add to apiEdges with handle info
+      const newApiEdge: MindMapEdgeResponse = {
+        id: tempEdgeId,
+        sourceNodeId: Number(conn.source),
+        targetNodeId: Number(conn.target),
+        sourceHandle: conn.sourceHandle || 'bottom',
+        targetHandle: conn.targetHandle || 'top',
+        mindMapId,
+      };
+      setApiEdges((prev) => [...prev, newApiEdge]);
       setDirty(true);
     },
-    [setRfEdges],
+    [setRfEdges, mindMapId],
+  );
+
+  /** Handle edge changes (including deletions) from React Flow */
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      onEdgesChange(changes);
+
+      // Check for edge removals and sync to apiEdges
+      const removals = changes.filter((c) => c.type === 'remove');
+      if (removals.length > 0) {
+        const removedRfIds = new Set(removals.map((c) => c.id));
+
+        // Get the current rfEdges to find the source/target info before they're removed
+        setApiEdges((prevApiEdges) => {
+          // Match by RF edge id pattern: e{apiEdgeId} or e{sourceNodeId}-{targetNodeId}-{sourceHandle}-{targetHandle}
+          return prevApiEdges.filter((apiEdge) => {
+            const rfId = `e${apiEdge.id ?? `${apiEdge.sourceNodeId}-${apiEdge.targetNodeId}-${apiEdge.sourceHandle}-${apiEdge.targetHandle}`}`;
+            return !removedRfIds.has(rfId);
+          });
+        });
+        setDirty(true);
+      }
+    },
+    [onEdgesChange],
   );
 
   /* ─── Add node ─────────────────────────────────────── */
@@ -284,7 +327,6 @@ const MindMapEditorPage = () => {
         positionY: y,
         color: '#ffffff',
         hideChildren: false,
-        parentNodeId: parentRfId ? Number(parentRfId) : null,
         mindMapId,
         flashCardId: flashCard.id,
         flashCard: {
@@ -297,10 +339,28 @@ const MindMapEditorPage = () => {
         },
       };
 
+      // If adding as a child, create an edge from parent to new node
+      let newEdge: MindMapEdgeResponse | null = null;
+      if (parentRfId) {
+        const edgeTempId = tempIdRef.current--;
+        newEdge = {
+          id: edgeTempId,
+          sourceNodeId: Number(parentRfId),
+          targetNodeId: tempId,
+          sourceHandle: 'bottom',
+          targetHandle: 'top',
+          mindMapId,
+        };
+      }
+
       setApiNodes((prev) => {
-        const updated = [...prev, newApiNode];
-        rebuildFlow(updated);
-        return updated;
+        const updatedNodes = [...prev, newApiNode];
+        setApiEdges((prevEdges) => {
+          const updatedEdges = newEdge ? [...prevEdges, newEdge] : prevEdges;
+          rebuildFlow(updatedNodes, updatedEdges);
+          return updatedEdges;
+        });
+        return updatedNodes;
       });
 
       setShowFlashCardPicker(false);
@@ -332,58 +392,7 @@ const MindMapEditorPage = () => {
     [selectedNodeId, setRfNodes],
   );
 
-  /* ─── Delete node ──────────────────────────────────── */
-  const handleDeleteNode = useCallback(() => {
-    if (!selectedNodeId) return;
-    // Collect this node + all descendants
-    const toDelete = new Set<string>();
-    const collectDescendants = (parentId: string) => {
-      toDelete.add(parentId);
-      apiNodes
-        .filter((n) => String(n.parentNodeId) === parentId)
-        .forEach((n) => collectDescendants(String(n.id)));
-    };
-    collectDescendants(selectedNodeId);
 
-    setApiNodes((prev) => {
-      const updated = prev.filter((n) => !toDelete.has(String(n.id)));
-      rebuildFlow(updated);
-      return updated;
-    });
-    setSelectedNodeId(null);
-    setShowDeleteConfirm(false);
-    setDirty(true);
-  }, [selectedNodeId, apiNodes, rebuildFlow]);
-
-  /* ─── Reparent node ────────────────────────────────── */
-  const startReparent = useCallback(() => {
-    setNodeToReparent(selectedNodeId);
-    setSettingParentMode(true);
-    setSelectedNodeId(null); // close panel so user can click target
-  }, [selectedNodeId]);
-
-  const reparentNode = useCallback(
-    (childRfId: string, newParentRfId: string) => {
-      if (childRfId === newParentRfId) {
-        setSettingParentMode(false);
-        setNodeToReparent(null);
-        return;
-      }
-      setApiNodes((prev) => {
-        const updated = prev.map((n) =>
-          String(n.id) === childRfId
-            ? { ...n, parentNodeId: Number(newParentRfId) }
-            : n,
-        );
-        rebuildFlow(updated);
-        return updated;
-      });
-      setSettingParentMode(false);
-      setNodeToReparent(null);
-      setDirty(true);
-    },
-    [rebuildFlow],
-  );
 
   /* ─── Save ─────────────────────────────────────────── */
   const handleSave = useCallback(async () => {
@@ -402,22 +411,33 @@ const MindMapEditorPage = () => {
           positionY: rfNode?.position.y ?? apiNode.positionY,
           color: apiNode.color,
           hideChildren: apiNode.hideChildren,
-          parentNodeId: apiNode.parentNodeId,
           flashCardId: apiNode.flashCardId,
         };
       });
 
-      const result = await mindMapService.saveAllNodes(mindMapId, { nodes: nodesToSave });
+      const edgesToSave = apiEdges.map((apiEdge) => ({
+        id: apiEdge.id > 0 ? apiEdge.id : null, // negative = new
+        sourceNodeId: apiEdge.sourceNodeId,
+        targetNodeId: apiEdge.targetNodeId,
+        sourceHandle: apiEdge.sourceHandle,
+        targetHandle: apiEdge.targetHandle,
+      }));
+
+      const result = await mindMapService.saveAllNodes(mindMapId, {
+        nodes: nodesToSave,
+        edges: edgesToSave,
+      });
       // Refresh with returned data (new IDs from server)
       setApiNodes(result.nodes);
-      rebuildFlow(result.nodes);
+      setApiEdges(result.edges ?? []);
+      rebuildFlow(result.nodes, result.edges ?? []);
       setDirty(false);
     } catch {
       setError('Failed to save mind map');
     } finally {
       setSaving(false);
     }
-  }, [apiNodes, rfNodes, mindMapId, rebuildFlow]);
+  }, [apiNodes, apiEdges, rfNodes, mindMapId, rebuildFlow]);
 
   /* ─── Derived data ─────────────────────────────────── */
   const selectedNode = useMemo(
@@ -471,20 +491,6 @@ const MindMapEditorPage = () => {
           {dirty && <span className="text-xs text-amber-600 font-medium">● Unsaved changes</span>}
         </div>
         <div className="flex items-center gap-2">
-          {settingParentMode && (
-            <span className="text-sm text-indigo-600 font-medium mr-2 animate-pulse">
-              Click a node to set as new parent…
-              <button
-                className="ml-2 text-gray-400 hover:text-gray-600"
-                onClick={() => {
-                  setSettingParentMode(false);
-                  setNodeToReparent(null);
-                }}
-              >
-                Cancel
-              </button>
-            </span>
-          )}
           <button
             onClick={() => handleAddNode(null)}
             className="px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
@@ -513,16 +519,10 @@ const MindMapEditorPage = () => {
           nodes={rfNodes}
           edges={rfEdges}
           onNodesChange={handleNodesChange}
-          onEdgesChange={onEdgesChange}
+          onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
-          onPaneClick={() => {
-            setSelectedNodeId(null);
-            if (settingParentMode) {
-              setSettingParentMode(false);
-              setNodeToReparent(null);
-            }
-          }}
+          onPaneClick={() => setSelectedNodeId(null)}
           fitView
           fitViewOptions={{ padding: 0.3 }}
           minZoom={0.1}
@@ -561,10 +561,7 @@ const MindMapEditorPage = () => {
             nodeData={selectedNode.data as unknown as MindMapNodeData}
             rfNodeId={selectedNode.id}
             onClose={() => setSelectedNodeId(null)}
-            onAddChild={() => handleAddNode(selectedNode.id)}
-            onSetParent={startReparent}
             onChangeColor={handleChangeColor}
-            onDelete={() => setShowDeleteConfirm(true)}
           />
         )}
       </div>
@@ -582,16 +579,6 @@ const MindMapEditorPage = () => {
         usedFlashCardIds={usedFlashCardIds}
       />
 
-      {/* Delete confirmation */}
-      <ConfirmModal
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleDeleteNode}
-        title="Delete Node"
-        message="This will remove the node and all its children. Continue?"
-        confirmText="Delete"
-        type="danger"
-      />
     </div>
   );
 };

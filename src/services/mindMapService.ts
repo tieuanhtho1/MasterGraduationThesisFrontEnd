@@ -5,6 +5,7 @@ import type {
   CreateMindMapDto,
   UpdateMindMapDto,
   MindMapNodeResponse,
+  MindMapEdgeResponse,
   CreateMindMapNodeDto,
   UpdateMindMapNodeDto,
   BulkSaveNodesRequest,
@@ -84,5 +85,18 @@ export const mindMapService = {
   saveAllNodes: async (mindMapId: number, data: BulkSaveNodesRequest): Promise<BulkSaveNodesResponse> => {
     const response = await apiClient.put(`/MindMap/${mindMapId}/nodes`, data);
     return response.data;
+  },
+
+  // ─── Edge CRUD ───────────────────────────────────────────
+
+  /** Get all edges for a mind map */
+  getEdgesByMindMap: async (mindMapId: number): Promise<MindMapEdgeResponse[]> => {
+    const response = await apiClient.get(`/MindMap/${mindMapId}/edges`);
+    return response.data;
+  },
+
+  /** Delete a single edge by ID */
+  deleteEdge: async (edgeId: number): Promise<void> => {
+    await apiClient.delete(`/MindMap/edge/${edgeId}`);
   },
 };

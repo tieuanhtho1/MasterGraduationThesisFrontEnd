@@ -5,10 +5,7 @@ interface NodeDetailPanelProps {
   nodeData: MindMapNodeData;
   rfNodeId: string;
   onClose: () => void;
-  onAddChild: () => void;
-  onSetParent: () => void;
   onChangeColor: (color: string) => void;
-  onDelete: () => void;
 }
 
 const PRESET_COLORS = [
@@ -29,10 +26,7 @@ const scoreLabel = (score: number) => {
 const NodeDetailPanel: FC<NodeDetailPanelProps> = ({
   nodeData,
   onClose,
-  onAddChild,
-  onSetParent,
   onChangeColor,
-  onDelete,
 }) => {
   const { flashCard, color } = nodeData;
   const sl = scoreLabel(flashCard.score);
@@ -84,27 +78,7 @@ const NodeDetailPanel: FC<NodeDetailPanelProps> = ({
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col gap-2 pt-2 border-t">
-          <button
-            onClick={onAddChild}
-            className="w-full px-3 py-2 text-sm text-left text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-          >
-            ➕ Add Child Node
-          </button>
-          <button
-            onClick={onSetParent}
-            className="w-full px-3 py-2 text-sm text-left text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-          >
-            🔗 Set as Child of Another Node
-          </button>
-          <button
-            onClick={onDelete}
-            className="w-full px-3 py-2 text-sm text-left text-red-600 hover:bg-red-50 rounded-lg transition"
-          >
-            🗑️ Delete Node
-          </button>
-        </div>
+
       </div>
     </div>
   );

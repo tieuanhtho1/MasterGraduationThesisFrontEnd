@@ -184,10 +184,18 @@ export interface MindMapNodeResponse {
   positionY: number;
   color: string;
   hideChildren: boolean;
-  parentNodeId: number | null;
   mindMapId: number;
   flashCardId: number;
   flashCard: MindMapNodeFlashCard;
+}
+
+export interface MindMapEdgeResponse {
+  id: number;
+  sourceNodeId: number;
+  targetNodeId: number;
+  sourceHandle: string;
+  targetHandle: string;
+  mindMapId: number;
 }
 
 export interface MindMapDetailResponse {
@@ -200,6 +208,7 @@ export interface MindMapDetailResponse {
   createdAt: string;
   updatedAt: string;
   nodes: MindMapNodeResponse[];
+  edges: MindMapEdgeResponse[];
 }
 
 export interface CreateMindMapDto {
@@ -220,7 +229,6 @@ export interface CreateMindMapNodeDto {
   positionY: number;
   color?: string;
   hideChildren?: boolean;
-  parentNodeId?: number | null;
   mindMapId: number;
   flashCardId: number;
 }
@@ -230,7 +238,6 @@ export interface UpdateMindMapNodeDto {
   positionY: number;
   color?: string;
   hideChildren?: boolean;
-  parentNodeId?: number | null;
 }
 
 export interface BulkSaveNodeDto {
@@ -239,15 +246,24 @@ export interface BulkSaveNodeDto {
   positionY: number;
   color?: string;
   hideChildren?: boolean;
-  parentNodeId: number | null;
   flashCardId: number;
+}
+
+export interface BulkSaveEdgeDto {
+  id: number | null;
+  sourceNodeId: number;
+  targetNodeId: number;
+  sourceHandle: string;
+  targetHandle: string;
 }
 
 export interface BulkSaveNodesRequest {
   nodes: BulkSaveNodeDto[];
+  edges: BulkSaveEdgeDto[];
 }
 
 export interface BulkSaveNodesResponse {
   message: string;
   nodes: MindMapNodeResponse[];
+  edges: MindMapEdgeResponse[];
 }
