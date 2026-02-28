@@ -12,7 +12,7 @@ import SettingsPage from './pages/SettingsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import ReportsPage from './pages/ReportsPage';
 import MindMapListPage from './pages/MindMapListPage';
-import MindMapCanvasPage from './pages/MindMapCanvasPage';
+import MindMapEditorPage from './pages/MindMapEditorPage';
 
 function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -48,7 +48,7 @@ function App() {
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="mindmap" element={<MindMapListPage />} />
-          <Route path="mindmap/:id" element={<MindMapCanvasPage />} />
+          <Route path="mindmap/:id" element={<MindMapEditorPage />} />
         </Route>
 
         {/* Fallback Route */}

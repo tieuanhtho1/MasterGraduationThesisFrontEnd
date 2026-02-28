@@ -157,73 +157,97 @@ export interface CollectionAnalytics {
 }
 
 // MindMap Types
-export interface MindMap {
+export interface MindMapResponse {
   id: number;
-  name: string;
+  title: string;
   description: string;
+  userId: number;
+  flashCardCollectionId: number;
+  collectionTitle: string;
+  nodeCount: number;
   createdAt: string;
   updatedAt: string;
-  userId: number;
 }
 
-export interface MindMapNode {
+export interface MindMapNodeFlashCard {
   id: number;
-  mindMapId: number;
-  flashCardId: number;
-  parentNodeId: number | null;
+  term: string;
+  definition: string;
+  score: number;
+  timesLearned: number;
+  flashCardCollectionId: number;
+}
+
+export interface MindMapNodeResponse {
+  id: number;
   positionX: number;
   positionY: number;
   color: string;
   hideChildren: boolean;
-  createdAt: string;
-  updatedAt: string;
+  parentNodeId: number | null;
+  mindMapId: number;
+  flashCardId: number;
+  flashCard: MindMapNodeFlashCard;
 }
 
-export interface MindMapNodeWithFlashCard extends MindMapNode {
-  flashCard: {
-    id: number;
-    term: string;
-    definition: string;
-    score: number;
-    learnCount: number;
-    flashCardCollectionId: number;
-    collectionName: string;
-  };
-}
-
-export interface FullMindMapResponse {
+export interface MindMapDetailResponse {
   id: number;
-  name: string;
+  title: string;
   description: string;
+  userId: number;
+  flashCardCollectionId: number;
+  collectionTitle: string;
   createdAt: string;
   updatedAt: string;
-  userId: number;
-  nodes: MindMapNodeWithFlashCard[];
+  nodes: MindMapNodeResponse[];
 }
 
 export interface CreateMindMapDto {
-  name: string;
+  title: string;
   description?: string;
+  userId: number;
+  flashCardCollectionId: number;
 }
 
 export interface UpdateMindMapDto {
-  name?: string;
+  title: string;
   description?: string;
+  flashCardCollectionId?: number;
 }
 
 export interface CreateMindMapNodeDto {
-  flashCardId: number;
-  parentNodeId?: number | null;
   positionX: number;
   positionY: number;
   color?: string;
   hideChildren?: boolean;
+  parentNodeId?: number | null;
+  mindMapId: number;
+  flashCardId: number;
 }
 
 export interface UpdateMindMapNodeDto {
-  positionX?: number;
-  positionY?: number;
+  positionX: number;
+  positionY: number;
   color?: string;
   hideChildren?: boolean;
   parentNodeId?: number | null;
+}
+
+export interface BulkSaveNodeDto {
+  id: number | null;
+  positionX: number;
+  positionY: number;
+  color?: string;
+  hideChildren?: boolean;
+  parentNodeId: number | null;
+  flashCardId: number;
+}
+
+export interface BulkSaveNodesRequest {
+  nodes: BulkSaveNodeDto[];
+}
+
+export interface BulkSaveNodesResponse {
+  message: string;
+  nodes: MindMapNodeResponse[];
 }
