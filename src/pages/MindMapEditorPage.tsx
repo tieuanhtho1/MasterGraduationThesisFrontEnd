@@ -578,6 +578,7 @@ const MindMapEditorPage = () => {
         }}
         onSelect={handleFlashCardSelected}
         defaultCollectionId={defaultCollectionId}
+        defaultCollectionTitle={mindMap?.collectionTitle}
         usedFlashCardIds={usedFlashCardIds}
       />
 
