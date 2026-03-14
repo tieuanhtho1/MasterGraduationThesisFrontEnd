@@ -267,3 +267,31 @@ export interface BulkSaveNodesResponse {
   nodes: MindMapNodeResponse[];
   edges: MindMapEdgeResponse[];
 }
+
+// AI Generation Types
+export interface GenerateFlashCardsResponse {
+  collection: {
+    id: number;
+    title: string;
+    description: string;
+    parentId: number | null;
+    userId: number;
+  };
+  flashCards: FlashCard[];
+}
+
+export interface GenerateMindMapResponse {
+  mindMap: MindMapDetailResponse;
+}
+
+export interface GenerateAllResponse {
+  collection: {
+    id: number;
+    title: string;
+    description: string;
+    parentId: number | null;
+    userId: number;
+  };
+  flashCards: FlashCard[];
+  mindMap: MindMapDetailResponse;
+}
